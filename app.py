@@ -219,5 +219,43 @@ if uploaded_file:
         "TRL": t.get("trl"),
         "Call Name": t.get("call"),
         "Expected Outcome": t.get("expected_outcome"),
-        "Scope": t.get
+        "Scope": t.get("scope"),
+        "Description": t.get("full_text")
+    } for t in enriched])
 
+    # ========== 🔧 Format Columns ==========
+    for date_col in ["Opening Date", "Deadline"]:
+        df[date_col] = pd.to_datetime(df[date_col], format="%d %B %Y", errors='coerce').dt.strftime('%Y-%m-%d')
+
+    df["Budget Per Project"] = pd.to_numeric(df["Budget Per Project"], errors='coerce')
+    df["Total Budget"] = pd.to_numeric(df["Total Budget"], errors='coerce')
+
+    # ========== Preview ==========
+    st.subheader("📊 Preview of Extracted Topics")
+    st.dataframe(df.drop(columns=["Description"]).head(10), use_container_width=True)
+
+    # ========== 🔍 Search Feature ==========
+    st.subheader("🔍 Search Topics by Keyword")
+    keyword = st.text_input("Enter keyword to filter topics:")
+
+    if keyword:
+        keyword = keyword.lower()
+        filtered_df = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword).any(), axis=1)]
+        filtered_df = filtered_df.drop_duplicates()
+
+        st.markdown(f"**Results containing keyword: `{keyword}`**")
+        st.dataframe(filtered_df.drop(columns=["Description"]), use_container_width=True)
+        st.write(f"🔎 Found {len(filtered_df)} matching topics.")
+
+    # ========== 💾 Download ==========
+    output = BytesIO()
+    df.to_excel(output, index=False)
+    output.seek(0)
+
+    st.success(f"✅ Extracted {len(df)} topics!")
+    st.download_button(
+        label="⬇️ Download Excel File",
+        data=output,
+        file_name="horizon_topics.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
