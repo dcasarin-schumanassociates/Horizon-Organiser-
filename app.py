@@ -221,19 +221,6 @@ if uploaded_file:
     for col in ["Opening Date", "Deadline"]:
         df[col] = df[col].astype(str).str.strip().replace("None", "")
         df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce').dt.strftime('%Y-%m-%d')
-    
-    # Budgets — preserve numeric form as-is, no manipulation
-    for col in ["Budget Per Project", "Total Budget"]:
-        df[col] = df[col].astype(str).str.strip().replace("None", "")
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-    
-    # Recalculate number of projects
-    df["Number of Projects"] = df.apply(
-        lambda row: int(row["Total Budget"] / row["Budget Per Project"])
-        if pd.notnull(row["Total Budget"]) and pd.notnull(row["Budget Per Project"]) and row["Budget Per Project"] > 0
-        else None,
-        axis=1
-    )
 
     # ========== Preview ==========
     st.subheader("📊 Preview of Extracted Topics")
