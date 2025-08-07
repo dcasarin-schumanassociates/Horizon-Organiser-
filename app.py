@@ -227,50 +227,50 @@ if uploaded_file:
     st.subheader("📊 Preview of Extracted Topics")
     st.dataframe(df.drop(columns=["Description"]).head(10), use_container_width=True)
 
-    # ========== 🔍 Search Feature ==========
-
     # ========== Tabs ==========
     tab1, tab2, tab3 = st.tabs(["🔍 Keyword Search", "📊 Dashboard Filters", "📋 Full Data"])
     
-    # ========== 🔍 Search Feature ==========
+    # ========== 🔍 Keyword Search ==========
     with tab1:
         st.subheader("🔍 Search Topics by Keyword")
         keyword = st.text_input("Enter keyword to filter topics:")
-
+    
         if keyword:
             keyword = keyword.lower()
-            filtered_df = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword), axis=1)]
-            filtered_df = filtered_df.drop_duplicates()
-
-            # 🧠 Save to session_state so we can use it in download button
-            st.session_state["search_filtered_df"] = filtered_df.copy()
-    
+            search_df = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword).any(), axis=1)]
+            search_df = search_df.drop_duplicates()
             st.markdown(f"**Results containing keyword: `{keyword}`**")
-            st.dataframe(filtered_df.drop(columns=["Description"]), use_container_width=True)
-            st.write(f"🔎 Found {len(filtered_df)} matching topics.")
-
+            st.dataframe(search_df.drop(columns=["Description"]), use_container_width=True)
+            st.write(f"🔎 Found {len(search_df)} matching topics.")
+    
+            # 🔽 Download button for search results
+            search_output = BytesIO()
+            search_df.to_excel(search_output, index=False)
+            search_output.seek(0)
+    
+            st.download_button(
+                label=f"⬇️ Download {len(search_df)} keyword results",
+                data=search_output,
+                file_name="horizon_search_filtered.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
     
     # ========== 📊 Dashboard Filters ==========
     with tab2:
         st.subheader("📊 Interactive Dashboard Filters")
     
-        # ✅ Start from keyword search result if it exists
-        base_df = st.session_state.get("search_filtered_df", df).copy()
-    
         col1, col2, col3 = st.columns(3)
     
         with col1:
-            type_filter = []
-            if "Type of Action" in base_df.columns:
-                type_filter = st.multiselect("Type of Action", sorted(base_df["Type of Action"].dropna().unique()))
+            type_filter = st.multiselect("Type of Action", sorted(df["Type of Action"].dropna().unique()))
         with col2:
-            call_filter = st.multiselect("Call Name", sorted(base_df["Call Name"].dropna().unique()))
+            call_filter = st.multiselect("Call Name", sorted(df["Call Name"].dropna().unique()))
         with col3:
-            trl_filter = st.multiselect("TRL", sorted(base_df["TRL"].dropna().unique()))
+            trl_filter = st.multiselect("TRL", sorted(df["TRL"].dropna().unique()))
     
-        destination_filter = st.multiselect("Destination", sorted(base_df["Destination"].dropna().unique()))
+        destination_filter = st.multiselect("Destination", sorted(df["Destination"].dropna().unique()))
     
-        max_budget = base_df["Budget Per Project"].dropna().max()
+        max_budget = df["Budget Per Project"].dropna().max()
         max_budget = int(max_budget) if pd.notna(max_budget) else 100_000_000
     
         budget_range = st.slider(
@@ -281,31 +281,39 @@ if uploaded_file:
             step=100000
         )
     
-        # ✅ Apply filters on top of base_df (which might already be filtered by keyword)
-        filtered_df = base_df.copy()
+        dashboard_df = df.copy()
         if type_filter:
-            filtered_df = filtered_df[filtered_df["Type of Action"].isin(type_filter)]
+            dashboard_df = dashboard_df[dashboard_df["Type of Action"].isin(type_filter)]
         if call_filter:
-            filtered_df = filtered_df[filtered_df["Call Name"].isin(call_filter)]
+            dashboard_df = dashboard_df[dashboard_df["Call Name"].isin(call_filter)]
         if trl_filter:
-            filtered_df = filtered_df[filtered_df["TRL"].isin(trl_filter)]
+            dashboard_df = dashboard_df[dashboard_df["TRL"].isin(trl_filter)]
         if destination_filter:
-            filtered_df = filtered_df[filtered_df["Destination"].isin(destination_filter)]
-        filtered_df = filtered_df[
-            (filtered_df["Budget Per Project"].fillna(0) >= budget_range[0]) &
-            (filtered_df["Budget Per Project"].fillna(0) <= budget_range[1])
+            dashboard_df = dashboard_df[dashboard_df["Destination"].isin(destination_filter)]
+        dashboard_df = dashboard_df[
+            (dashboard_df["Budget Per Project"].fillna(0) >= budget_range[0]) &
+            (dashboard_df["Budget Per Project"].fillna(0) <= budget_range[1])
         ]
     
-        # ✅ Save to session_state for download use
-        st.session_state["dashboard_filtered_df"] = filtered_df.copy()
+        st.markdown(f"📌 Showing {len(dashboard_df)} matching topics")
+        st.dataframe(dashboard_df.drop(columns=["Description"]), use_container_width=True)
     
-        st.markdown(f"📌 Showing {len(filtered_df)} matching topics")
-        st.dataframe(filtered_df.drop(columns=["Description"]), use_container_width=True)
-
+        # 🔽 Download button for dashboard filters
+        dashboard_output = BytesIO()
+        dashboard_df.to_excel(dashboard_output, index=False)
+        dashboard_output.seek(0)
     
-    # ========== 📋 Full Data Table ==========
+        st.download_button(
+            label=f"⬇️ Download {len(dashboard_df)} filtered topics",
+            data=dashboard_output,
+            file_name="horizon_dashboard_filtered.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    
+    # ========== 📋 Full Data Tab ==========
     with tab3:
         st.subheader("📋 View Full Topics Table")
+    
         for _, row in df.iterrows():
             with st.expander(f"{row['Code']} — {row['Title']}"):
                 st.markdown(f"**Type of Action:** {row['Type of Action']}")
@@ -320,36 +328,14 @@ if uploaded_file:
                 st.markdown(f"**Scope:**\n\n{row['Scope']}")
                 st.markdown(f"**Full Description:**\n\n{row['Description']}")
     
-
-    # ========== 💾 Download ==========
+        # 🔽 Download button for full data
+        full_output = BytesIO()
+        df.to_excel(full_output, index=False)
+        full_output.seek(0)
     
-    # Priority: dashboard filter (on top of search) > search only > full
-    if "dashboard_filtered_df" in st.session_state:
-        export_df = st.session_state["dashboard_filtered_df"]
-        label = f"⬇️ Download {len(export_df)} filtered topics"
-        msg = f"✅ Ready to download {len(export_df)} dashboard+search filtered topics"
-    
-    elif "search_filtered_df" in st.session_state:
-        export_df = st.session_state["search_filtered_df"]
-        label = f"⬇️ Download {len(export_df)} search results"
-        msg = f"✅ Ready to download {len(export_df)} keyword search topics"
-    
-    else:
-        export_df = df
-        label = f"⬇️ Download all {len(export_df)} topics"
-        msg = f"✅ Ready to download all topics"
-
-    
-    output = BytesIO()
-    export_df.to_excel(output, index=False)
-    output.seek(0)
-    
-    st.success(msg)
-    st.download_button(
-        label=label,
-        data=output,
-        file_name="horizon_topics.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
-
+        st.download_button(
+            label=f"⬇️ Download all {len(df)} topics",
+            data=full_output,
+            file_name="horizon_all_topics.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
