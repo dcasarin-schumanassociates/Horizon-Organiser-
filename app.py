@@ -228,17 +228,83 @@ if uploaded_file:
     st.dataframe(df.drop(columns=["Description"]).head(10), use_container_width=True)
 
     # ========== 🔍 Search Feature ==========
+
+    # ========== Tabs ==========
+tab1, tab2, tab3 = st.tabs(["🔍 Keyword Search", "📊 Dashboard Filters", "📋 Full Data"])
+
+# ========== 🔍 Search Feature ==========
+with tab1:
     st.subheader("🔍 Search Topics by Keyword")
     keyword = st.text_input("Enter keyword to filter topics:")
-
     if keyword:
         keyword = keyword.lower()
         filtered_df = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword).any(), axis=1)]
         filtered_df = filtered_df.drop_duplicates()
-
         st.markdown(f"**Results containing keyword: `{keyword}`**")
         st.dataframe(filtered_df.drop(columns=["Description"]), use_container_width=True)
         st.write(f"🔎 Found {len(filtered_df)} matching topics.")
+
+# ========== 📊 Dashboard Filters ==========
+with tab2:
+    st.subheader("📊 Interactive Dashboard Filters")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        type_filter = st.multiselect("Type of Action", sorted(df["Type of Action"].dropna().unique()))
+    with col2:
+        call_filter = st.multiselect("Call Name", sorted(df["Call Name"].dropna().unique()))
+    with col3:
+        trl_filter = st.multiselect("TRL", sorted(df["TRL"].dropna().unique()))
+
+    destination_filter = st.multiselect("Destination", sorted(df["Destination"].dropna().unique()))
+
+    max_budget = df["Budget Per Project"].dropna().max()
+    max_budget = int(max_budget) if pd.notna(max_budget) else 100_000_000
+
+    budget_range = st.slider(
+        "Budget Per Project (EUR)",
+        0,
+        max_budget,
+        (0, max_budget),
+        step=100000
+    )
+
+    # Apply filters
+    filtered_df = df.copy()
+    if type_filter:
+        filtered_df = filtered_df[filtered_df["Type of Action"].isin(type_filter)]
+    if call_filter:
+        filtered_df = filtered_df[filtered_df["Call Name"].isin(call_filter)]
+    if trl_filter:
+        filtered_df = filtered_df[filtered_df["TRL"].isin(trl_filter)]
+    if destination_filter:
+        filtered_df = filtered_df[filtered_df["Destination"].isin(destination_filter)]
+    filtered_df = filtered_df[
+        (filtered_df["Budget Per Project"].fillna(0) >= budget_range[0]) &
+        (filtered_df["Budget Per Project"].fillna(0) <= budget_range[1])
+    ]
+
+    st.markdown(f"📌 Showing {len(filtered_df)} matching topics")
+    st.dataframe(filtered_df.drop(columns=["Description"]), use_container_width=True)
+
+# ========== 📋 Full Data Table ==========
+with tab3:
+    st.subheader("📋 View Full Topics Table")
+    for _, row in df.iterrows():
+        with st.expander(f"{row['Code']} — {row['Title']}"):
+            st.markdown(f"**Type of Action:** {row['Type of Action']}")
+            st.markdown(f"**Call Name:** {row['Call Name']}")
+            st.markdown(f"**TRL:** {row['TRL']}")
+            st.markdown(f"**Opening Date:** {row['Opening Date']}")
+            st.markdown(f"**Deadline:** {row['Deadline']}")
+            st.markdown(f"**Destination:** {row['Destination']}")
+            st.markdown(f"**Budget per Project:** {row['Budget Per Project']}")
+            st.markdown(f"**Total Budget:** {row['Total Budget']}")
+            st.markdown(f"**Expected Outcome:**\n\n{row['Expected Outcome']}")
+            st.markdown(f"**Scope:**\n\n{row['Scope']}")
+            st.markdown(f"**Full Description:**\n\n{row['Description']}")
+
 
     # ========== 💾 Download ==========
     output = BytesIO()
