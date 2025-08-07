@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 
-from extractors.pdf_reader import extract_text_from_pdf
-from extractors.topic_blocks import extract_topic_blocks
-from extractors.metadata import extract_metadata_blocks
-from extractors.fields import extract_data_fields
+from ecxtractors.pdf_reader import extract_text_from_pdf
+from ecxtractors.topic_blocks import extract_topic_blocks
+from ecxtractors.metadata import extract_metadata_blocks
+from ecxtractors.fields import extract_data_fields
 from utils.converters import convert_dataframe_types
 from ui.filters import render_filters_tab
 from ui.display import render_search_tab, render_full_table_tab
