@@ -254,20 +254,23 @@ if uploaded_file:
     with tab2:
         st.subheader("📊 Interactive Dashboard Filters")
     
+        # ✅ Start from keyword search result if it exists
+        base_df = st.session_state.get("search_filtered_df", df).copy()
+    
         col1, col2, col3 = st.columns(3)
     
         with col1:
             type_filter = []
-            if "Type of Action" in df.columns:
-                type_filter = st.multiselect("Type of Action", sorted(df["Type of Action"].dropna().unique()))
+            if "Type of Action" in base_df.columns:
+                type_filter = st.multiselect("Type of Action", sorted(base_df["Type of Action"].dropna().unique()))
         with col2:
-            call_filter = st.multiselect("Call Name", sorted(df["Call Name"].dropna().unique()))
+            call_filter = st.multiselect("Call Name", sorted(base_df["Call Name"].dropna().unique()))
         with col3:
-            trl_filter = st.multiselect("TRL", sorted(df["TRL"].dropna().unique()))
+            trl_filter = st.multiselect("TRL", sorted(base_df["TRL"].dropna().unique()))
     
-        destination_filter = st.multiselect("Destination", sorted(df["Destination"].dropna().unique()))
+        destination_filter = st.multiselect("Destination", sorted(base_df["Destination"].dropna().unique()))
     
-        max_budget = df["Budget Per Project"].dropna().max()
+        max_budget = base_df["Budget Per Project"].dropna().max()
         max_budget = int(max_budget) if pd.notna(max_budget) else 100_000_000
     
         budget_range = st.slider(
@@ -278,8 +281,8 @@ if uploaded_file:
             step=100000
         )
     
-        # Apply filters
-        filtered_df = df.copy()
+        # ✅ Apply filters on top of base_df (which might already be filtered by keyword)
+        filtered_df = base_df.copy()
         if type_filter:
             filtered_df = filtered_df[filtered_df["Type of Action"].isin(type_filter)]
         if call_filter:
@@ -293,8 +296,12 @@ if uploaded_file:
             (filtered_df["Budget Per Project"].fillna(0) <= budget_range[1])
         ]
     
+        # ✅ Save to session_state for download use
+        st.session_state["dashboard_filtered_df"] = filtered_df.copy()
+    
         st.markdown(f"📌 Showing {len(filtered_df)} matching topics")
         st.dataframe(filtered_df.drop(columns=["Description"]), use_container_width=True)
+
     
     # ========== 📋 Full Data Table ==========
     with tab3:
@@ -314,23 +321,24 @@ if uploaded_file:
                 st.markdown(f"**Full Description:**\n\n{row['Description']}")
     
 
-        # ========== 💾 Download (Filtered or Full) ==========
+    # ========== 💾 Download ==========
     
-    # Priority: keyword search > dashboard filter > full dataset
-    if "search_filtered_df" in st.session_state:
+    # Priority: dashboard filter (on top of search) > search only > full
+    if "dashboard_filtered_df" in st.session_state:
+        export_df = st.session_state["dashboard_filtered_df"]
+        label = f"⬇️ Download {len(export_df)} filtered topics"
+        msg = f"✅ Ready to download {len(export_df)} dashboard+search filtered topics"
+    
+    elif "search_filtered_df" in st.session_state:
         export_df = st.session_state["search_filtered_df"]
-        label = f"⬇️ Download {len(export_df)} keyword search results"
-        msg = f"✅ Ready to download {len(export_df)} search-matched topics"
-    
-    elif "filtered_df" in locals():
-        export_df = filtered_df
-        label = f"⬇️ Download {len(export_df)} dashboard-filtered topics"
-        msg = f"✅ Ready to download {len(export_df)} dashboard-filtered topics"
+        label = f"⬇️ Download {len(export_df)} search results"
+        msg = f"✅ Ready to download {len(export_df)} keyword search topics"
     
     else:
         export_df = df
         label = f"⬇️ Download all {len(export_df)} topics"
-        msg = f"✅ Ready to download all {len(export_df)} topics"
+        msg = f"✅ Ready to download all topics"
+
     
     output = BytesIO()
     export_df.to_excel(output, index=False)
