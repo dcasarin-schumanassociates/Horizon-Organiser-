@@ -71,17 +71,16 @@ def extract_data_fields(topic):
     text = normalize_text(topic["full_text"])
 
     def extract_budget(text):
-        match = re.search(r"around\s+eur\s+([\d.,]+)", text.lower())
+        match = re.search(r"budget per project.*?EUR\s*([\d.,]+)", text, re.IGNORECASE)
         if match:
-            return int(float(match.group(1).replace(",", "")) * 1_000_000)
-        match = re.search(r"between\s+eur\s+[\d.,]+\s+and\s+([\d.,]+)", text.lower())
-        if match:
-            return int(float(match.group(1).replace(",", "")) * 1_000_000)
+            return match.group(1).replace(",", "")
         return None
 
     def extract_total_budget(text):
-        match = re.search(r"indicative budget.*?eur\s?([\d.,]+)", text.lower())
-        return int(float(match.group(1).replace(",", "")) * 1_000_000) if match else None
+        match = re.search(r"indicative budget.*?EUR\s*([\d.,]+)", text, re.IGNORECASE)
+        if match:
+            return match.group(1).replace(",", "")
+        return None
 
     def get_section(keyword, stop_keywords):
         lines = text.splitlines()
@@ -161,22 +160,14 @@ def extract_metadata_blocks(text):
         lower = line.lower()
 
         if lower.startswith("opening:"):
-            current_metadata["opening_date"] = re.search(r"(\d{1,2} \w+ \d{4})", line)
-            current_metadata["opening_date"] = (
-                current_metadata["opening_date"].group(1)
-                if current_metadata["opening_date"]
-                else None
-            )
+            date_match = re.search(r"(\d{1,2} \w+ \d{4})", line)
+            current_metadata["opening_date"] = date_match.group(1) if date_match else None
             current_metadata["deadline"] = None
             collecting = True
 
         elif collecting and lower.startswith("deadline"):
-            current_metadata["deadline"] = re.search(r"(\d{1,2} \w+ \d{4})", line)
-            current_metadata["deadline"] = (
-                current_metadata["deadline"].group(1)
-                if current_metadata["deadline"]
-                else None
-            )
+            date_match = re.search(r"(\d{1,2} \w+ \d{4})", line)
+            current_metadata["deadline"] = date_match.group(1) if date_match else None
 
         elif collecting and lower.startswith("destination"):
             current_metadata["destination"] = line.split(":", 1)[-1].strip()
@@ -213,7 +204,7 @@ if uploaded_file:
         "Destination": t.get("destination"),
         "Budget Per Project": t.get("budget_per_project"),
         "Total Budget": t.get("indicative_total_budget"),
-        "Number of Projects": int(t["indicative_total_budget"] / t["budget_per_project"])
+        "Number of Projects": int(float(t["indicative_total_budget"]) / float(t["budget_per_project"]))
             if t.get("budget_per_project") and t.get("indicative_total_budget") else None,
         "Type of Action": t.get("type_of_action"),
         "TRL": t.get("trl"),
@@ -224,11 +215,13 @@ if uploaded_file:
     } for t in enriched])
 
     # ========== 🔧 Format Columns ==========
-    for date_col in ["Opening Date", "Deadline"]:
-        df[date_col] = pd.to_datetime(df[date_col], format="%d %B %Y", errors='coerce').dt.strftime('%Y-%m-%d')
+    # Convert date columns to YYYY-MM-DD
+    for col in ["Opening Date", "Deadline"]:
+        df[col] = pd.to_datetime(df[col], format="%d %B %Y", dayfirst=True, errors='coerce').dt.strftime('%Y-%m-%d')
 
-    df["Budget Per Project"] = pd.to_numeric(df["Budget Per Project"], errors='coerce')
-    df["Total Budget"] = pd.to_numeric(df["Total Budget"], errors='coerce')
+    # Convert budgets to numeric
+    df["Budget Per Project"] = pd.to_numeric(df["Budget Per Project"], errors="coerce")
+    df["Total Budget"] = pd.to_numeric(df["Total Budget"], errors="coerce")
 
     # ========== Preview ==========
     st.subheader("📊 Preview of Extracted Topics")
