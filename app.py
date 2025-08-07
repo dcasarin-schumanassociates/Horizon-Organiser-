@@ -251,9 +251,9 @@ with tab2:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-    type_filter = []
-    if "Type of Action" in df.columns:
-        type_filter = st.multiselect("Type of Action", sorted(df["Type of Action"].dropna().unique()))
+        type_filter = []
+        if "Type of Action" in df.columns:
+            type_filter = st.multiselect("Type of Action", sorted(df["Type of Action"].dropna().unique()))
     with col2:
         call_filter = st.multiselect("Call Name", sorted(df["Call Name"].dropna().unique()))
     with col3:
