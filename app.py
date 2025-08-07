@@ -234,20 +234,20 @@ if uploaded_file:
     
     # ========== 🔍 Search Feature ==========
     with tab1:
-    st.subheader("🔍 Search Topics by Keyword")
-    keyword = st.text_input("Enter keyword to filter topics:")
+        st.subheader("🔍 Search Topics by Keyword")
+        keyword = st.text_input("Enter keyword to filter topics:")
 
-    if keyword:
-        keyword = keyword.lower()
-        filtered_df = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword), axis=1)]
-        filtered_df = filtered_df.drop_duplicates()
+        if keyword:
+            keyword = keyword.lower()
+            filtered_df = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword), axis=1)]
+            filtered_df = filtered_df.drop_duplicates()
 
-        # 🧠 Save to session_state so we can use it in download button
-        st.session_state["search_filtered_df"] = filtered_df.copy()
-
-        st.markdown(f"**Results containing keyword: `{keyword}`**")
-        st.dataframe(filtered_df.drop(columns=["Description"]), use_container_width=True)
-        st.write(f"🔎 Found {len(filtered_df)} matching topics.")
+            # 🧠 Save to session_state so we can use it in download button
+            st.session_state["search_filtered_df"] = filtered_df.copy()
+    
+            st.markdown(f"**Results containing keyword: `{keyword}`**")
+            st.dataframe(filtered_df.drop(columns=["Description"]), use_container_width=True)
+            st.write(f"🔎 Found {len(filtered_df)} matching topics.")
 
     
     # ========== 📊 Dashboard Filters ==========
