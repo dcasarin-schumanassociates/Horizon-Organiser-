@@ -70,7 +70,7 @@ def extract_topic_blocks(text):
 def extract_data_fields(topic):
     text = normalize_text(topic["full_text"])
 
-   def extract_budget(text):
+    def extract_budget(text):
         match = re.search(r"around\s+eur\s+([\d.,]+)", text.lower())
         if match:
             return int(float(match.group(1).replace(",", "")) * 1_000_000)
