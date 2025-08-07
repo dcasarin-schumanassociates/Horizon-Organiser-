@@ -234,15 +234,21 @@ if uploaded_file:
     
     # ========== 🔍 Search Feature ==========
     with tab1:
-        st.subheader("🔍 Search Topics by Keyword")
-        keyword = st.text_input("Enter keyword to filter topics:")
-        if keyword:
-            keyword = keyword.lower()
-            filtered_df = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword).any(), axis=1)]
-            filtered_df = filtered_df.drop_duplicates()
-            st.markdown(f"**Results containing keyword: `{keyword}`**")
-            st.dataframe(filtered_df.drop(columns=["Description"]), use_container_width=True)
-            st.write(f"🔎 Found {len(filtered_df)} matching topics.")
+    st.subheader("🔍 Search Topics by Keyword")
+    keyword = st.text_input("Enter keyword to filter topics:")
+
+    if keyword:
+        keyword = keyword.lower()
+        filtered_df = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword), axis=1)]
+        filtered_df = filtered_df.drop_duplicates()
+
+        # 🧠 Save to session_state so we can use it in download button
+        st.session_state["search_filtered_df"] = filtered_df.copy()
+
+        st.markdown(f"**Results containing keyword: `{keyword}`**")
+        st.dataframe(filtered_df.drop(columns=["Description"]), use_container_width=True)
+        st.write(f"🔎 Found {len(filtered_df)} matching topics.")
+
     
     # ========== 📊 Dashboard Filters ==========
     with tab2:
@@ -308,25 +314,34 @@ if uploaded_file:
                 st.markdown(f"**Full Description:**\n\n{row['Description']}")
     
 
-    # ========== 💾 Download (Filtered or Full) ==========
-    try:
-        export_df = filtered_df.copy()
-        export_label = f"⬇️ Download {len(export_df)} filtered topics"
-        success_message = f"✅ Ready to download {len(export_df)} filtered topics"
-    except NameError:
-        export_df = df.copy()
-        export_label = f"⬇️ Download all {len(export_df)} topics"
-        success_message = f"✅ Ready to download all {len(export_df)} topics"
+        # ========== 💾 Download (Filtered or Full) ==========
+    
+    # Priority: keyword search > dashboard filter > full dataset
+    if "search_filtered_df" in st.session_state:
+        export_df = st.session_state["search_filtered_df"]
+        label = f"⬇️ Download {len(export_df)} keyword search results"
+        msg = f"✅ Ready to download {len(export_df)} search-matched topics"
+    
+    elif "filtered_df" in locals():
+        export_df = filtered_df
+        label = f"⬇️ Download {len(export_df)} dashboard-filtered topics"
+        msg = f"✅ Ready to download {len(export_df)} dashboard-filtered topics"
+    
+    else:
+        export_df = df
+        label = f"⬇️ Download all {len(export_df)} topics"
+        msg = f"✅ Ready to download all {len(export_df)} topics"
     
     output = BytesIO()
     export_df.to_excel(output, index=False)
     output.seek(0)
     
-    st.success(success_message)
+    st.success(msg)
     st.download_button(
-        label=export_label,
+        label=label,
         data=output,
         file_name="horizon_topics.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
