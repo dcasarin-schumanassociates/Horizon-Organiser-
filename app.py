@@ -308,15 +308,25 @@ if uploaded_file:
                 st.markdown(f"**Full Description:**\n\n{row['Description']}")
     
 
-    # ========== 💾 Download ==========
+    # ========== 💾 Download (Filtered or Full) ==========
+    try:
+        export_df = filtered_df.copy()
+        export_label = f"⬇️ Download {len(export_df)} filtered topics"
+        success_message = f"✅ Ready to download {len(export_df)} filtered topics"
+    except NameError:
+        export_df = df.copy()
+        export_label = f"⬇️ Download all {len(export_df)} topics"
+        success_message = f"✅ Ready to download all {len(export_df)} topics"
+    
     output = BytesIO()
-    df.to_excel(output, index=False)
+    export_df.to_excel(output, index=False)
     output.seek(0)
-
-    st.success(f"✅ Extracted {len(df)} topics!")
+    
+    st.success(success_message)
     st.download_button(
-        label="⬇️ Download Excel File",
+        label=export_label,
         data=output,
         file_name="horizon_topics.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
