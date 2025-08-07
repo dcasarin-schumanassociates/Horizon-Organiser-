@@ -70,17 +70,18 @@ def extract_topic_blocks(text):
 def extract_data_fields(topic):
     text = normalize_text(topic["full_text"])
 
-    def extract_budget(text):
-        match = re.search(r"budget per project.*?EUR\s*([\d.,]+)", text, re.IGNORECASE)
+   def extract_budget(text):
+        match = re.search(r"around\s+eur\s+([\d.,]+)", text.lower())
         if match:
-            return match.group(1).replace(",", "")
+            return int(float(match.group(1).replace(",", "")) * 1_000_000)
+        match = re.search(r"between\s+eur\s+[\d.,]+\s+and\s+([\d.,]+)", text.lower())
+        if match:
+            return int(float(match.group(1).replace(",", "")) * 1_000_000)
         return None
 
     def extract_total_budget(text):
-        match = re.search(r"indicative budget.*?EUR\s*([\d.,]+)", text, re.IGNORECASE)
-        if match:
-            return match.group(1).replace(",", "")
-        return None
+        match = re.search(r"indicative budget.*?eur\s?([\d.,]+)", text.lower())
+        return int(float(match.group(1).replace(",", "")) * 1_000_000) if match else None
 
     def get_section(keyword, stop_keywords):
         lines = text.splitlines()
