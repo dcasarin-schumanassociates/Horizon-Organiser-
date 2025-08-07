@@ -224,7 +224,7 @@ if uploaded_file:
         df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce').dt.strftime('%Y-%m-%d')
 
     # ========== Preview ==========
-    st.subheader("📊 Preview of Extracted Topics")
+    st.subheader("📊 Preview")
     st.dataframe(df.drop(columns=["Description"]).head(10), use_container_width=True)
 
     # ========== Tabs ==========
