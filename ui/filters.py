@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 
 def render_filters_tab(df, tab):
     with tab:
