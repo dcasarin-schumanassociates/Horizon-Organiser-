@@ -4,7 +4,7 @@ import re
 import pandas as pd
 from io import BytesIO
 
-st.set_page_config(page_title="Horizon Topic Extractor", layout="centered")
+st.set_page_config(page_title="Horizon Topic Organiser", layout="centered")
 st.title("📄 Horizon Topic Extractor")
 st.write("Upload a Horizon Europe PDF file and get an Excel sheet with parsed topics.")
 
