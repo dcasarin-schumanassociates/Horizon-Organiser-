@@ -214,14 +214,25 @@ if uploaded_file:
         "Description": t.get("full_text")
     } for t in enriched])
 
-    # ========== 🔧 Format Columns ==========
-    # Convert date columns to YYYY-MM-DD
-    for col in ["Opening Date", "Deadline"]:
-        df[col] = pd.to_datetime(df[col], format="%d %B %Y", dayfirst=True, errors='coerce').dt.strftime('%Y-%m-%d')
 
-    # Convert budgets to numeric
+    # ========== 🔧 Clean and Convert Columns ==========
+
+    # Strip all strings before datetime conversion to handle extra spaces
+    for col in ["Opening Date", "Deadline"]:
+        df[col] = df[col].astype(str).str.strip()
+        df[col] = pd.to_datetime(df[col], format="%d %B %Y", errors='coerce').dt.strftime('%Y-%m-%d')
+    
+    # Convert budget columns to numeric (NO scaling, NO stripping zeroes)
     df["Budget Per Project"] = pd.to_numeric(df["Budget Per Project"], errors="coerce")
     df["Total Budget"] = pd.to_numeric(df["Total Budget"], errors="coerce")
+    
+    # Safely calculate number of projects
+    df["Number of Projects"] = df.apply(
+        lambda row: int(row["Total Budget"] / row["Budget Per Project"])
+        if pd.notnull(row["Total Budget"]) and pd.notnull(row["Budget Per Project"]) and row["Budget Per Project"] != 0
+        else None,
+        axis=1
+    )
 
     # ========== Preview ==========
     st.subheader("📊 Preview of Extracted Topics")
