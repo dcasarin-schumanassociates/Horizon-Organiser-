@@ -271,7 +271,7 @@ if uploaded_file:
         destination_filter = st.multiselect("Destination", sorted(df["Destination"].dropna().unique()))
     
         max_budget = df["Budget Per Project"].dropna().max()
-        max_budget = int(max_budget) if pd.notna(max_budget) else 100_000_000
+        max_budget = int(max_budget) if pd.notna(max_budget) else 50_000_000
     
         budget_range = st.slider(
             "Budget Per Project (EUR)",
@@ -281,6 +281,34 @@ if uploaded_file:
             step=100000
         )
     
+        # ✅ Parse dates properly
+        df["Opening Date"] = pd.to_datetime(df["Opening Date"], errors='coerce')
+        df["Deadline"] = pd.to_datetime(df["Deadline"], errors='coerce')
+    
+        # ✅ Get min/max for date filters
+        min_open = df["Opening Date"].min()
+        max_open = df["Opening Date"].max()
+        min_deadline = df["Deadline"].min()
+        max_deadline = df["Deadline"].max()
+    
+        col4, col5 = st.columns(2)
+    
+        with col4:
+            opening_range = st.date_input(
+                "Opening Date Range",
+                value=(min_open, max_open),
+                min_value=min_open,
+                max_value=max_open
+            )
+        with col5:
+            deadline_range = st.date_input(
+                "Deadline Range",
+                value=(min_deadline, max_deadline),
+                min_value=min_deadline,
+                max_value=max_deadline
+            )
+    
+        # ✅ Apply filters
         dashboard_df = df.copy()
         if type_filter:
             dashboard_df = dashboard_df[dashboard_df["Type of Action"].isin(type_filter)]
@@ -295,10 +323,18 @@ if uploaded_file:
             (dashboard_df["Budget Per Project"].fillna(0) <= budget_range[1])
         ]
     
+        # ✅ Apply date range filters
+        dashboard_df = dashboard_df[
+            (dashboard_df["Opening Date"] >= pd.to_datetime(opening_range[0])) &
+            (dashboard_df["Opening Date"] <= pd.to_datetime(opening_range[1])) &
+            (dashboard_df["Deadline"] >= pd.to_datetime(deadline_range[0])) &
+            (dashboard_df["Deadline"] <= pd.to_datetime(deadline_range[1]))
+        ]
+    
         st.markdown(f"📌 Showing {len(dashboard_df)} matching topics")
         st.dataframe(dashboard_df.drop(columns=["Description"]), use_container_width=True)
     
-        # 🔽 Download button for dashboard filters
+        # 💾 Download button
         dashboard_output = BytesIO()
         dashboard_df.to_excel(dashboard_output, index=False)
         dashboard_output.seek(0)
@@ -309,6 +345,7 @@ if uploaded_file:
             file_name="horizon_dashboard_filtered.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
     
     # ========== 📋 Full Data Tab ==========
     with tab3:
