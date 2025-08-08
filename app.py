@@ -346,18 +346,78 @@ if uploaded_file:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-    
-    # ========== 📋 Full Data Tab ==========
+
+     # ========== 📋 Full Data Tab ==========
     with tab3:
         st.subheader("📋 View Full Topics Table")
     
-        for _, row in df.iterrows():
+        st.markdown("You can use keyword search and filters below to refine the view.")
+    
+        # --- Filters ---
+        keyword_full = st.text_input("🔍 Search in full data", key="full_data_search")
+    
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            full_type_filter = st.multiselect("Type of Action", sorted(df["Type of Action"].dropna().unique()), key="full_type")
+        with col2:
+            full_call_filter = st.multiselect("Call Name", sorted(df["Call Name"].dropna().unique()), key="full_call")
+        with col3:
+            full_trl_filter = st.multiselect("TRL", sorted(df["TRL"].dropna().unique()), key="full_trl")
+    
+        full_destination_filter = st.multiselect("Destination", sorted(df["Destination"].dropna().unique()), key="full_dest")
+    
+        # Date conversion
+        df["Opening Date"] = pd.to_datetime(df["Opening Date"], errors='coerce')
+        df["Deadline"] = pd.to_datetime(df["Deadline"], errors='coerce')
+    
+        # Date ranges
+        col4, col5 = st.columns(2)
+        with col4:
+            opening_range = st.date_input(
+                "Opening Date Range", 
+                value=(df["Opening Date"].min(), df["Opening Date"].max()), 
+                min_value=df["Opening Date"].min(), 
+                max_value=df["Opening Date"].max(), 
+                key="full_open"
+            )
+        with col5:
+            deadline_range = st.date_input(
+                "Deadline Range", 
+                value=(df["Deadline"].min(), df["Deadline"].max()), 
+                min_value=df["Deadline"].min(), 
+                max_value=df["Deadline"].max(), 
+                key="full_dead"
+            )
+    
+        # Apply filters
+        full_df = df.copy()
+        if full_type_filter:
+            full_df = full_df[full_df["Type of Action"].isin(full_type_filter)]
+        if full_call_filter:
+            full_df = full_df[full_df["Call Name"].isin(full_call_filter)]
+        if full_trl_filter:
+            full_df = full_df[full_df["TRL"].isin(full_trl_filter)]
+        if full_destination_filter:
+            full_df = full_df[full_df["Destination"].isin(full_destination_filter)]
+        if opening_range:
+            full_df = full_df[(full_df["Opening Date"] >= pd.to_datetime(opening_range[0])) & (full_df["Opening Date"] <= pd.to_datetime(opening_range[1]))]
+        if deadline_range:
+            full_df = full_df[(full_df["Deadline"] >= pd.to_datetime(deadline_range[0])) & (full_df["Deadline"] <= pd.to_datetime(deadline_range[1]))]
+    
+        if keyword_full:
+            keyword_lower = keyword_full.lower()
+            full_df = full_df[full_df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword_lower).any(), axis=1)]
+    
+        st.markdown(f"📌 Showing {len(full_df)} matching topics")
+    
+        # Display expandable view
+        for _, row in full_df.iterrows():
             with st.expander(f"{row['Code']} — {row['Title']}"):
                 st.markdown(f"**Type of Action:** {row['Type of Action']}")
                 st.markdown(f"**Call Name:** {row['Call Name']}")
                 st.markdown(f"**TRL:** {row['TRL']}")
-                st.markdown(f"**Opening Date:** {row['Opening Date']}")
-                st.markdown(f"**Deadline:** {row['Deadline']}")
+                st.markdown(f"**Opening Date:** {row['Opening Date'].date() if pd.notna(row['Opening Date']) else '—'}")
+                st.markdown(f"**Deadline:** {row['Deadline'].date() if pd.notna(row['Deadline']) else '—'}")
                 st.markdown(f"**Destination:** {row['Destination']}")
                 st.markdown(f"**Budget per Project:** {row['Budget Per Project']}")
                 st.markdown(f"**Total Budget:** {row['Total Budget']}")
@@ -365,14 +425,14 @@ if uploaded_file:
                 st.markdown(f"**Scope:**\n\n{row['Scope']}")
                 st.markdown(f"**Full Description:**\n\n{row['Description']}")
     
-        # 🔽 Download button for full data
+        # 🔽 Download button for filtered full data
         full_output = BytesIO()
-        df.to_excel(full_output, index=False)
+        full_df.to_excel(full_output, index=False)
         full_output.seek(0)
     
         st.download_button(
-            label=f"⬇️ Download all {len(df)} topics",
+            label=f"⬇️ Download {len(full_df)} filtered topics",
             data=full_output,
-            file_name="horizon_all_topics.xlsx",
+            file_name="horizon_full_filtered.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
