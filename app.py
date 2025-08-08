@@ -421,11 +421,9 @@ if uploaded_file:
                 st.markdown(f"**Type of Action:** {row['Type of Action']}")
                 st.markdown(f"**Call Name:** {row['Call Name']}")
                 st.markdown(f"**TRL:** {row['TRL']}")
-                st.markdown(f"**Opening Date:** {row['Opening Date'].date() if pd.notna(row['Opening Date']) else '—'}")
-                st.markdown(f"**Deadline:** {row['Deadline'].date() if pd.notna(row['Deadline']) else '—'}")
+                st.markdown(f"**Opening Date:** {row['Opening Date'].date() if pd.notna(row['Opening Date']) else '—'} — **Deadline:** {row['Deadline'].date() if pd.notna(row['Deadline']) else '—'}")
                 st.markdown(f"**Destination:** {row['Destination']}")
-                st.markdown(f"**Budget per Project:** {row['Budget Per Project']}")
-                st.markdown(f"**Total Budget:** {row['Total Budget']}")
+                st.markdown(f"**Budget per Project:** {row['Budget Per Project']} - **Total Budget:** {row['Total Budget']}")
     
                 st.markdown("**Expected Outcome:**", unsafe_allow_html=True)
                 st.markdown(highlight_keyword(row['Expected Outcome'], keyword_full), unsafe_allow_html=True)
