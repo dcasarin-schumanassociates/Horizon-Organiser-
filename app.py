@@ -4,6 +4,15 @@ import re
 import pandas as pd
 from io import BytesIO
 
+import html
+
+def highlight_keyword(text, keyword):
+    if not text or not keyword:
+        return html.escape(str(text))
+    escaped_text = html.escape(str(text))
+    pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+    return pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", escaped_text)
+
 st.set_page_config(page_title="Horizon Explorer Tool", layout="wide")
 st.title("📄 Horizon Explorer Tool")
 st.write("Upload a Horizon Europe PDF file and get an Excel sheet with parsed topics.")
@@ -343,6 +352,99 @@ if uploaded_file:
             label=f"⬇️ Download {len(dashboard_df)} filtered topics",
             data=dashboard_output,
             file_name="horizon_dashboard_filtered.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    # ========== 📋 Full Data Tab ==========
+    with tab3:
+        st.subheader("📋 View Full Topics Table")
+    
+        st.markdown("You can use keyword search and filters below to refine the view.")
+    
+        # --- Filters ---
+        keyword_full = st.text_input("🔍 Search in full data", key="full_data_search")
+    
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            full_type_filter = st.multiselect("Type of Action", sorted(df["Type of Action"].dropna().unique()), key="full_type")
+        with col2:
+            full_call_filter = st.multiselect("Call Name", sorted(df["Call Name"].dropna().unique()), key="full_call")
+        with col3:
+            full_trl_filter = st.multiselect("TRL", sorted(df["TRL"].dropna().unique()), key="full_trl")
+    
+        full_destination_filter = st.multiselect("Destination", sorted(df["Destination"].dropna().unique()), key="full_dest")
+    
+        df["Opening Date"] = pd.to_datetime(df["Opening Date"], errors='coerce')
+        df["Deadline"] = pd.to_datetime(df["Deadline"], errors='coerce')
+    
+        col4, col5 = st.columns(2)
+        with col4:
+            opening_range = st.date_input(
+                "Opening Date Range", 
+                value=(df["Opening Date"].min(), df["Opening Date"].max()), 
+                min_value=df["Opening Date"].min(), 
+                max_value=df["Opening Date"].max(), 
+                key="full_open"
+            )
+        with col5:
+            deadline_range = st.date_input(
+                "Deadline Range", 
+                value=(df["Deadline"].min(), df["Deadline"].max()), 
+                min_value=df["Deadline"].min(), 
+                max_value=df["Deadline"].max(), 
+                key="full_dead"
+            )
+    
+        # Apply filters
+        full_df = df.copy()
+        if full_type_filter:
+            full_df = full_df[full_df["Type of Action"].isin(full_type_filter)]
+        if full_call_filter:
+            full_df = full_df[full_df["Call Name"].isin(full_call_filter)]
+        if full_trl_filter:
+            full_df = full_df[full_df["TRL"].isin(full_trl_filter)]
+        if full_destination_filter:
+            full_df = full_df[full_df["Destination"].isin(full_destination_filter)]
+        if opening_range:
+            full_df = full_df[(full_df["Opening Date"] >= pd.to_datetime(opening_range[0])) & (full_df["Opening Date"] <= pd.to_datetime(opening_range[1]))]
+        if deadline_range:
+            full_df = full_df[(full_df["Deadline"] >= pd.to_datetime(deadline_range[0])) & (full_df["Deadline"] <= pd.to_datetime(deadline_range[1]))]
+        if keyword_full:
+            keyword_lower = keyword_full.lower()
+            full_df = full_df[full_df.apply(lambda row: row.astype(str).str.lower().str.contains(keyword_lower).any(), axis=1)]
+    
+        st.markdown(f"📌 Showing {len(full_df)} matching topics")
+    
+        # --- Display expandable view with optional keyword highlight ---
+        for _, row in full_df.iterrows():
+            with st.expander(f"{row['Code']} — {row['Title']}"):
+                st.markdown(f"**Type of Action:** {row['Type of Action']}")
+                st.markdown(f"**Call Name:** {row['Call Name']}")
+                st.markdown(f"**TRL:** {row['TRL']}")
+                st.markdown(f"**Opening Date:** {row['Opening Date'].date() if pd.notna(row['Opening Date']) else '—'}")
+                st.markdown(f"**Deadline:** {row['Deadline'].date() if pd.notna(row['Deadline']) else '—'}")
+                st.markdown(f"**Destination:** {row['Destination']}")
+                st.markdown(f"**Budget per Project:** {row['Budget Per Project']}")
+                st.markdown(f"**Total Budget:** {row['Total Budget']}")
+    
+                st.markdown("**Expected Outcome:**", unsafe_allow_html=True)
+                st.markdown(highlight_keyword(row['Expected Outcome'], keyword_full), unsafe_allow_html=True)
+    
+                st.markdown("**Scope:**", unsafe_allow_html=True)
+                st.markdown(highlight_keyword(row['Scope'], keyword_full), unsafe_allow_html=True)
+    
+                st.markdown("**Full Description:**", unsafe_allow_html=True)
+                st.markdown(highlight_keyword(row['Description'], keyword_full), unsafe_allow_html=True)
+    
+        # 🔽 Download button for filtered full data
+        full_output = BytesIO()
+        full_df.to_excel(full_output, index=False)
+        full_output.seek(0)
+    
+        st.download_button(
+            label=f"⬇️ Download {len(full_df)} filtered topics",
+            data=full_output,
+            file_name="horizon_full_filtered.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
